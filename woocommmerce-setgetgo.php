@@ -42,6 +42,7 @@ function create_table_on_install() {
 		  `payment_address` varchar(255) COLLATE utf8mb4_unicode_520_ci NOT NULL DEFAULT '',
 		  `merchant_address` varchar(255) COLLATE utf8mb4_unicode_520_ci NOT NULL,
 		  `status` varchar(255) COLLATE utf8mb4_unicode_520_ci NOT NULL DEFAULT '',
+		  `callback_guid` varchar(255) COLLATE utf8mb4_unicode_520_ci NOT NULL DEFAULT '',
 		  `amount` FLOAT(10) NOT NULL,
 		  `amount_received` FLOAT(10) NOT NULL,
 		  `created` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
