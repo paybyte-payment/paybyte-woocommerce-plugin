@@ -46,7 +46,36 @@ class WC_Gateway_Custom extends WC_Payment_Gateway {
             &$this,
             'handle_callback'
         ));
+
+        add_action('woocommerce_thankyou', function($order_id)
+        {
+            $btcAmount = get_post_meta( $order_id, 'btc_total', true );
+         
+            if (strcmp($btcAmount, "true") == 0) {
+            return; 
+            }
+            ?>
+            <h2>Bitcoin payment</h2>
+            <table class="woocommerce-table shop_table gift_info">
+                <tbody>
+                    <tr>
+                        <th>Bitcoin amount</th>
+                        <td><?php echo  'BTC ' . $btcAmount ?></td>
+                    </tr> 
+                    <tr>
+                        <th>Message</th>
+                        <td>Your order has not been successfully processed yet! We received your payment, but we are waiting for a full confirmation from the Bitcoin Network. You will be notified by email.</td>
+                    </tr> 
+                </tbody>
+            </table>
+        <?php 
+        });
+
+
     }
+
+
+   
 
     /**
      * Build the administration fields for this specific Gateway
@@ -318,11 +347,11 @@ class WC_Gateway_Custom extends WC_Payment_Gateway {
          
                 switch ($update_payment_status) {
                     case 'payment_received':
-                        $order->update_status('on-hold', __('SetGetGo Payment received still on-hold.', 'woocommerce'));
-                        $order->add_order_note( __( 'SetGetGo payment received but still on-hold.' ) );
+                        $order->update_status('processing', __('SetGetGo payment received, waiting for final confirmation from SetGetGo.', 'woocommerce'));
+                        $order->add_order_note( __( 'SetGetGo payment received but still waiting for final confirmation.' ) );
                         break;
                     case 'payment_sent_to_merchant':
-                        $order->update_status('pending', __('SetGetGo Payment confirmed.', 'woocommerce'));
+                        $order->update_status('completed', __('SetGetGo payment confirmed.', 'woocommerce'));
                         $order->add_order_note( __( 'SetGetGo payment confirmed and funds sent to merchant wallet address.' ) );
                         break;
                     case 'payment_received_unconfirmed':
@@ -330,7 +359,7 @@ class WC_Gateway_Custom extends WC_Payment_Gateway {
                         $order->add_order_note( __( 'SetGetgo payment on-hold. Funds received but still unconfirmed.' ) );
                         break;
                     case 'expired':
-                        $order->update_status('failed', __('SetGetGo Payment failed. Payment request expired.', 'woocommerce'));
+                        $order->update_status('failed', __('SetGetGo payment failed. Payment request expired.', 'woocommerce'));
                         $order->add_order_note( __( 'SetGetGo payment failed. Transaction request expired.' ) );
                         break; 
                     case 'pending':
@@ -372,7 +401,7 @@ function add_custom_order_totals_row( $total_rows, $order) {
     
     // Insert a new row
     $total_rows['recurr_not'] = array(
-        "label" => __( 'BTC Total :', 'woocommerce' ),
+        "label" => __( 'BTC Total: ', 'woocommerce' ),
         "value" => $btc_total,
     );
 
