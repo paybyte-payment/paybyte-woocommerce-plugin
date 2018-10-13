@@ -32,7 +32,7 @@ class WC_Gateway_Custom extends WC_Payment_Gateway {
         // Define user set variables
         $this->title        = $this->get_option( 'title' );
         $this->description  = $this->get_option( 'description' );
-        $this->merch_addr = $this->get_option( 'merch_addr');
+        $this->api_key = $this->get_option( 'api_key');
         $this->order_status = $this->get_option( 'order_status', 'pending' );
 
         // Actions
@@ -105,7 +105,7 @@ class WC_Gateway_Custom extends WC_Payment_Gateway {
                 'desc_tip'    => true,
                 'options'     => wc_get_order_statuses()
             ),
-            'merch_addr' => array(
+            'api_key' => array(
                 'title'       => __( 'Merchant API key', $this->domain ),
                 'type'        => 'text',
                 'description' => __( 'Merchant API key.', $this->domain ),
