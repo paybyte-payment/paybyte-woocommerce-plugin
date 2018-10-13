@@ -106,9 +106,9 @@ class WC_Gateway_Custom extends WC_Payment_Gateway {
                 'options'     => wc_get_order_statuses()
             ),
             'merch_addr' => array(
-                'title'       => __( 'Merchant address', $this->domain ),
+                'title'       => __( 'Merchant API key', $this->domain ),
                 'type'        => 'text',
-                'description' => __( 'Bitcoin merchant address.', $this->domain ),
+                'description' => __( 'Merchant API key.', $this->domain ),
                 'default'     => '',
                 'desc_tip'    => true,
             ),
@@ -170,7 +170,7 @@ class WC_Gateway_Custom extends WC_Payment_Gateway {
     public function prepare_create_payment_url($customer_order, $order_id, $callaback_guid) {
 
         error_log("preparing create payment url..");
-        $merchant_address = $this->merch_addr;
+        $api_key = $this->api_key;
         $amount = $this->payment_fields();
         // get payment mode from settings saved in database
         $options =  get_option('woocommerce_custom_settings');
@@ -179,7 +179,7 @@ class WC_Gateway_Custom extends WC_Payment_Gateway {
         global $wp;
         $callback_url = urlencode(home_url('/') . "wc-api/wc_gateway_custom/?order_id=" . $order_id . "&secret=" . $callaback_guid);
         $return_url = urlencode( WC_Payment_Gateway::get_return_url( $customer_order ));        
-        $create_payment_url = "https://setgetgo.com/api/create-payment?amount=".$amount."&merch_addr=".$merchant_address.$testnet."&callback=".$callback_url."&return_url=".$return_url;
+        $create_payment_url = "https://setgetgo.com/api/create-payment?amount=".$amount."&api_key=".$api_key.$testnet."&callback=".$callback_url."&return_url=".$return_url;
               
         error_log("preparing create payment url: ". $create_payment_url);
 
@@ -230,7 +230,7 @@ class WC_Gateway_Custom extends WC_Payment_Gateway {
         $json_response = json_decode($response_body,true);
 
         $payment_address = $json_response['transaction']['payment-address'];
-        $res_merchant_address = $json_response['transaction']['merchant-address'];
+		$payment_id = $json_response['transaction']['payment-id'];
         $tran_status = $json_response['transaction']['status'];
         $total_amt = $json_response['transaction']['amount'];
         $amount_received = $json_response['transaction']['amount-received'];
@@ -252,7 +252,7 @@ class WC_Gateway_Custom extends WC_Payment_Gateway {
                             'user_id' => get_current_user_id(),
                             'order_id' => $order_id,
                             'payment_address' => $payment_address,
-                            'merchant_address' => $res_merchant_address,
+							'payment_id' => $payment_id
                             'status' => $tran_status,
                             'amount' => $total_amt,
                             'amount_received' => $amount_received,
@@ -312,10 +312,10 @@ class WC_Gateway_Custom extends WC_Payment_Gateway {
 
         $order_id = $_GET['order_id'];
         $secret = $_GET['secret'];
-        $merchant_address = $_GET['merchant_address'];   
+        $payment_id = $_GET['payment_id'];   
         $isTestnet = $_GET['testnet'];
         
-        error_log("callback received: " . $_GET['order_id'] . " , " . $_GET['merchant_address'] . " , " .  $_GET['testnet']);
+        error_log("callback received: " . $_GET['order_id'] . " , " . $_GET['payment_id'] . " , " .  $_GET['testnet']);
         
         // make sure this is a numberic value.
         if (is_numeric($order_id)) {    
@@ -324,16 +324,16 @@ class WC_Gateway_Custom extends WC_Payment_Gateway {
             $db_data = $wpdb->get_row('SELECT * FROM wp_setgetgo_payment where order_id="'.$order_id.'"', OBJECT, 0);
             $db_data = json_decode(json_encode($db_data), True);
             $db_payment_address = $db_data['payment_address']; 
-            $db_merchant_address = $db_data['merchant_address']; 
+            $db_payment_id = $db_data['payment_id']; 
             $db_callback_guid = $db_data['callback_guid'];
         
             /* Validity chack before updating the order state. */
             if( $db_callback_guid == $secret && 
-                $db_merchant_address == $merchant_address ) {
+                $db_payment_id == $payment_id ) {
         
                 $order = new WC_Order( $order_id );
                   
-                $get_status_url = "https://setgetgo.com/api/get-payment-status?payment_addr=".$db_payment_address."&testnet=".$isTestnet;
+                $get_status_url = "https://setgetgo.com/api/get-payment-status?payment_id=".$db_payment_id."&testnet=".$isTestnet;
                     
                 // get latest transaction payment status
                 $status_res = wp_remote_get( $get_status_url);

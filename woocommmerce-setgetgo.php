@@ -40,7 +40,7 @@ function create_table_on_install() {
 		  `user_id` int(10) NOT NULL,
 		  `order_id` int(10) NOT NULL,
 		  `payment_address` varchar(255) COLLATE utf8mb4_unicode_520_ci NOT NULL DEFAULT '',
-		  `merchant_address` varchar(255) COLLATE utf8mb4_unicode_520_ci NOT NULL,
+		  `payment_id` varchar(255) COLLATE utf8mb4_unicode_520_ci NOT NULL,
 		  `status` varchar(255) COLLATE utf8mb4_unicode_520_ci NOT NULL DEFAULT '',
 		  `callback_guid` varchar(255) COLLATE utf8mb4_unicode_520_ci NOT NULL DEFAULT '',
 		  `amount` FLOAT(10) NOT NULL,
