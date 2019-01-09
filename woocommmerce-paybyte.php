@@ -1,11 +1,11 @@
 <?php
 /*
-Plugin Name: Woocommerce SetGetGo Payment Gateway
-Plugin URI: https://setgetgo.com
-Description: Enable your WooCommerce store to accept Bitcoin with ease.
+Plugin Name: Woocommerce PayByte Payment Gateway
+Plugin URI: https://paybyte.io
+Description: Enable your WooCommerce store to accept Crypto payments with ease using PayByte Crypto payments processor.
 Version: 1.0.0
-Author: SetGetGo Ltd.
-Author URI: https://setgetgo.com
+Author: PayByte Ltd.
+Author URI: https://paybyte.io
 License: MIT
 */
 
@@ -35,7 +35,7 @@ function create_table_on_install() {
    	global $wpdb;
 	$charset_collate = $wpdb->get_charset_collate();
 
-	$sql = "CREATE TABLE `wp_setgetgo_payment` (
+	$sql = "CREATE TABLE `wp_paybyte_payment` (
 		  `id` mediumint(9) NOT NULL AUTO_INCREMENT,
 		  `user_id` int(10) NOT NULL,
 		  `order_id` int(10) NOT NULL,
@@ -44,6 +44,7 @@ function create_table_on_install() {
 		  `status` varchar(255) COLLATE utf8mb4_unicode_520_ci NOT NULL DEFAULT '',
 		  `callback_guid` varchar(255) COLLATE utf8mb4_unicode_520_ci NOT NULL DEFAULT '',
 		  `amount` FLOAT(10) NOT NULL,
+		  `coin` varchar(10) COLLATE utf8mb4_unicode_520_ci NOT NULL DEFAULT '',
 		  `amount_received` FLOAT(10) NOT NULL,
 		  `created` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		  PRIMARY KEY  (id)
@@ -61,8 +62,8 @@ register_activation_hook(__FILE__,'create_table_on_install');
 
 
 // Add custom action links
-add_filter( 'plugin_action_links_' . plugin_basename( __FILE__ ), 'setgetgo_action_links' );
-function setgetgo_action_links( $links ) {
+add_filter( 'plugin_action_links_' . plugin_basename( __FILE__ ), 'paybyte_action_links' );
+function paybyte_action_links( $links ) {
 	$plugin_links = array(
 		'<a href="' . admin_url( 'admin.php?page=wc-settings&tab=checkout' ) . '">' . __( 'Settings') . '</a>',
 	);

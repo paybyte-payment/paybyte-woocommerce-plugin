@@ -1,6 +1,6 @@
 <?php
 
-/* SetGetGo Payment Gateway Class */
+/* PaayByte Payment Gateway Class */
 class WC_Gateway_Custom extends WC_Payment_Gateway {
 
     public $domain;
@@ -15,10 +15,10 @@ class WC_Gateway_Custom extends WC_Payment_Gateway {
         $this->domain = 'custom_payment';
 
         $this->id                 = 'custom';
-        $this->icon               = apply_filters('woocommerce_custom_gateway_icon',  $plugin_dir.'/img/ssg_logo.png');
+        $this->icon               = apply_filters('woocommerce_custom_gateway_icon',  $plugin_dir.'/img/paybyte_logo_2.png');
         $this->has_fields         = false;
-        $this->method_title       = __( 'SetGetGo Payment', $this->domain );
-        $this->method_description = __( 'Allows payments with SetGetGo gateway.', $this->domain );
+        $this->method_title       = __( 'PayByte Payment', $this->domain );
+        $this->method_description = __( 'Allows payments with PayByte gateway.', $this->domain );
 
         // Load the settings.
         $this->init_form_fields();
@@ -34,10 +34,10 @@ class WC_Gateway_Custom extends WC_Payment_Gateway {
         $this->description  = $this->get_option( 'description' );
         $this->api_key = $this->get_option( 'api_key');
         $this->order_status = $this->get_option( 'order_status', 'pending' );
+        $this->coin  = $this->get_option( 'coin', 'BTC' );
 
         // Actions
         add_action( 'woocommerce_update_options_payment_gateways_' . $this->id, array( $this, 'process_admin_options' ) );
-        //add_action( 'woocommerce_thankyou_custom', array( $this, 'thankyou_page' ) );
 
         // Lets check for SSL
         add_action( 'admin_notices', array( $this,  'do_ssl_check' ) );
@@ -49,22 +49,22 @@ class WC_Gateway_Custom extends WC_Payment_Gateway {
 
         add_action('woocommerce_thankyou', function($order_id)
         {
-            $btcAmount = get_post_meta( $order_id, 'btc_total', true );
+            $coinAmount = get_post_meta( $order_id, 'coin_total', true );
          
-            if (strcmp($btcAmount, "true") == 0) {
-            return; 
+            if (strcmp($coinAmount, "true") == 0) {
+                return; 
             }
             ?>
-            <h2>Bitcoin payment</h2>
+            <h2><?php echo ('Crypto payment (' . $this->coin . ')') ?></h2>
             <table class="woocommerce-table shop_table gift_info">
                 <tbody>
                     <tr>
-                        <th>Bitcoin amount</th>
-                        <td><?php echo  'BTC ' . $btcAmount ?></td>
+                        <th>Crypto coin amount</th>
+                        <td><?php echo   $this->api_key . ' ' . $coinAmount ?></td>
                     </tr> 
                     <tr>
                         <th>Message</th>
-                        <td>Your order has not been successfully processed yet! We received your payment, but we are waiting for a full confirmation from the Bitcoin Network. You will be notified by email.</td>
+                        <td>Your order has not been successfully processed yet! We received your payment, but we are waiting for a full confirmation from the Blockchain Network.</td>
                     </tr> 
                 </tbody>
             </table>
@@ -73,9 +73,7 @@ class WC_Gateway_Custom extends WC_Payment_Gateway {
 
 
     }
-
-
-   
+  
 
     /**
      * Build the administration fields for this specific Gateway
@@ -86,14 +84,14 @@ class WC_Gateway_Custom extends WC_Payment_Gateway {
             'enabled' => array(
                 'title'   => __( 'Enable/Disable', $this->domain ),
                 'type'    => 'checkbox',
-                'label'   => __( 'Enable SetGetgo Payment', $this->domain ),
+                'label'   => __( 'Enable PayByte Payment', $this->domain ),
                 'default' => 'no'
             ),
             'title' => array(
                 'title'       => __( 'Title', $this->domain ),
                 'type'        => 'text',
                 'description' => __( 'This controls the title which the user sees during checkout.', $this->domain ),
-                'default'     => __( 'SetGetgo Payment', $this->domain ),
+                'default'     => __( 'PayByte Payment', $this->domain ),
                 'desc_tip'    => true,
             ),
             'order_status' => array(
@@ -113,7 +111,7 @@ class WC_Gateway_Custom extends WC_Payment_Gateway {
                 'desc_tip'    => true,
             ),
             'isTestnet' => array(
-                'title'     => __( 'SetGetGo Testnet' ),
+                'title'     => __( 'PayByte Testnet' ),
                 'label'     => __( 'Enable Testnet payments' ),
                 'type'      => 'checkbox',
                 'description' => __( 'Place the payment gateway in test mode.'),
@@ -125,7 +123,25 @@ class WC_Gateway_Custom extends WC_Payment_Gateway {
                 'description' => __( 'Payment method description that the customer will see on your checkout.', $this->domain ),
                 'default'     => __('Payment Information', $this->domain),
                 'desc_tip'    => true,
-            )
+            ),
+            'coin' => array(
+                'title'       => __( 'Crypto coin', $this->domain ),
+                'type'        => 'select',
+                'class'       => 'wc-enhanced-select',
+                'description' => __( 'Choose the crypto coin you want the payment to be made.', $this->domain ),
+                'default'     => 'BTC',
+                'desc_tip'    => true,
+                'options'     => array(
+                    'BTC'        => __( 'Bitcoin', 'woocommerce' ),
+                    'BCH'       => __( 'Bitcoin Cash', 'woocommerce' ),
+                    'BGD'  => __( 'Bitcoin Gold', 'woocommerce' ),
+                    'BTX'  => __( 'BitCore', 'woocommerce' ),
+                    'DGB' => __( 'DigiByte', 'woocommerce' ),
+                    'DASH'  => __( 'Dash', 'woocommerce' ),                    
+                    'GRS'  => __( 'Groestlcoin', 'woocommerce' ),
+                    'LTC'  => __( 'Litecoin', 'woocommerce' )
+                )
+            ),
         );
     }
 
@@ -139,9 +155,9 @@ class WC_Gateway_Custom extends WC_Payment_Gateway {
           
             $currency =  get_woocommerce_currency();
 
-            $url = "https://setgetgo.com/api/get-rate?currency=".$currency;
+            $url = "https://paybyte.io/api/get-rate?currency=".$currency;
 
-           // Send this payload to SetGetGo for processing
+           // Send this payload to PayByte for processing
             $response = wp_remote_get( $url);
             
             // Retrieve the body's resopnse if no errors found
@@ -179,7 +195,7 @@ class WC_Gateway_Custom extends WC_Payment_Gateway {
         global $wp;
         $callback_url = urlencode(home_url('/') . "wc-api/wc_gateway_custom/?order_id=" . $order_id . "&secret=" . $callaback_guid);
         $return_url = urlencode( WC_Payment_Gateway::get_return_url( $customer_order ));        
-        $create_payment_url = "https://setgetgo.com/api/create-payment?amount=".$amount."&api_key=".$api_key.$testnet."&callback=".$callback_url."&return_url=".$return_url;
+        $create_payment_url = "https://paybyte.io/api/create-payment?amount=".$amount."&api_key=".$api_key.$testnet."&callback=".$callback_url."&return_url=".$return_url;
               
         error_log("preparing create payment url: ". $create_payment_url);
 
@@ -214,14 +230,14 @@ class WC_Gateway_Custom extends WC_Payment_Gateway {
  
         $create_payment_url = $this->prepare_create_payment_url($customer_order, $order_id, $callback_guid);
        
-        // Send this payload to SetGetGo for processing
+        // Send this payload to PayByte for processing
         $response = wp_remote_get( $create_payment_url);
 
         if ( is_wp_error( $response ) ) 
             throw new Exception( __( 'We are currently experiencing problems trying to connect to this payment gateway. Sorry for the inconvenience.' ) );
 
         if ( empty( $response['body'] ) )
-            throw new Exception( __( 'SetGetGo\'s Response was empty.' ) );
+            throw new Exception( __( 'PayByte\'s Response was empty.' ) );
             
         // Retrieve the body's resopnse if no errors found
         $response_body = wp_remote_retrieve_body( $response );
@@ -242,12 +258,12 @@ class WC_Gateway_Custom extends WC_Payment_Gateway {
             //Add note to the order for your reference
             $customer_order->add_order_note( 'Error: '. $response_error);
 
-            $customer_order->update_status('failed', __( 'SetGetgo payment failed', 'woocommerce' ));
+            $customer_order->update_status('failed', __( 'PayByte payment failed', 'woocommerce' ));
         }
         else {
 
             global $wpdb;
-            $insert = $wpdb->insert('wp_setgetgo_payment',
+            $insert = $wpdb->insert('wp_paybyte_payment',
                     array(
                             'user_id' => get_current_user_id(),
                             'order_id' => $order_id,
@@ -264,7 +280,7 @@ class WC_Gateway_Custom extends WC_Payment_Gateway {
             if ($insert == 1) {
 
                 // Payment has been successful
-                $customer_order->add_order_note( __( 'SetGetgo payment initiated.' ) );
+                $customer_order->add_order_note( __( 'PayByte payment initiated.' ) );
 
                 /* Save payment url in meta field*/
                 update_post_meta( $order_id, 'payment_url', $received_payment_url ); 
@@ -272,7 +288,7 @@ class WC_Gateway_Custom extends WC_Payment_Gateway {
                 /* Save BTC Total in meta field*/
                 update_post_meta( $order_id, 'btc_total', $total_amt);
                
-                $customer_order->update_status('pending', __( 'Awaiting SetGetgo payment', 'woocommerce' ));
+                $customer_order->update_status('pending', __( 'Awaiting PayByte payment', 'woocommerce' ));
 
                 // Reduce stock levels
                 $customer_order->reduce_order_stock();
@@ -289,7 +305,7 @@ class WC_Gateway_Custom extends WC_Payment_Gateway {
             }
             else {
                 $customer_order->add_order_note( 'Error: '. 'Unable to store payment request data. Payment aborted.');
-                $customer_order->update_status('failed', __( 'SetGetgo payment failed', 'woocommerce' ));
+                $customer_order->update_status('failed', __( 'PayByte payment failed', 'woocommerce' ));
             }
         }
     }
@@ -321,7 +337,7 @@ class WC_Gateway_Custom extends WC_Payment_Gateway {
         if (is_numeric($order_id)) {    
           
             /* Check payment address exist in database */
-            $db_data = $wpdb->get_row('SELECT * FROM wp_setgetgo_payment where order_id="'.$order_id.'"', OBJECT, 0);
+            $db_data = $wpdb->get_row('SELECT * FROM wp_paybyte_payment where order_id="'.$order_id.'"', OBJECT, 0);
             $db_data = json_decode(json_encode($db_data), True);
             $db_payment_address = $db_data['payment_address']; 
             $db_payment_id = $db_data['payment_id']; 
@@ -333,7 +349,7 @@ class WC_Gateway_Custom extends WC_Payment_Gateway {
         
                 $order = new WC_Order( $order_id );
                   
-                $get_status_url = "https://setgetgo.com/api/get-payment-status?payment_id=".$db_payment_id."&testnet=".$isTestnet;
+                $get_status_url = "https://paybyte.io/api/get-payment-status?payment_id=".$db_payment_id."&testnet=".$isTestnet;
                     
                 // get latest transaction payment status
                 $status_res = wp_remote_get( $get_status_url);
@@ -343,28 +359,24 @@ class WC_Gateway_Custom extends WC_Payment_Gateway {
                 $update_payment_status = $payment_json_response['transaction']['status'];
                 $amount_received = $payment_json_response['transaction']['amount-received'];
         
-                $db_update_status = $wpdb->update('wp_setgetgo_payment', array('status' => $update_payment_status,'amount_received'=>$amount_received), array('payment_address' => $db_payment_address)); 
+                $db_update_status = $wpdb->update('wp_paybyte_payment', array('status' => $update_payment_status,'amount_received'=>$amount_received), array('payment_address' => $db_payment_address)); 
          
                 switch ($update_payment_status) {
                     case 'payment_received':
-                        $order->update_status('processing', __('SetGetGo payment received, waiting for final confirmation from SetGetGo.', 'woocommerce'));
-                        $order->add_order_note( __( 'SetGetGo payment received but still waiting for final confirmation.' ) );
-                        break;
-                    case 'payment_sent_to_merchant':
-                        $order->update_status('completed', __('SetGetGo payment confirmed.', 'woocommerce'));
-                        $order->add_order_note( __( 'SetGetGo payment confirmed and funds sent to merchant wallet address.' ) );
-                        break;
+                        $order->update_status('processing', __('PayByte payment received and transaction completed.', 'woocommerce'));
+                        $order->add_order_note( __( 'PayByte payment received and transaction complete.' ) );
+                        break;               
                     case 'payment_received_unconfirmed':
-                        $order->update_status('on-hold', __('SetGetGo payment on hold. Payment received but still unconfirmed.', 'woocommerce'));
-                        $order->add_order_note( __( 'SetGetgo payment on-hold. Funds received but still unconfirmed.' ) );
+                        $order->update_status('on-hold', __('PayByte payment on hold. Payment received but still unconfirmed.', 'woocommerce'));
+                        $order->add_order_note( __( 'PayByte payment on-hold. Funds received but still unconfirmed.' ) );
                         break;
                     case 'expired':
-                        $order->update_status('failed', __('SetGetGo payment failed. Payment request expired.', 'woocommerce'));
-                        $order->add_order_note( __( 'SetGetGo payment failed. Transaction request expired.' ) );
+                        $order->update_status('failed', __('PayByte payment failed. Payment request expired.', 'woocommerce'));
+                        $order->add_order_note( __( 'PayByte payment failed. Transaction request expired.' ) );
                         break; 
                     case 'pending':
-                        $order->update_status('pending', __('SetGetGo Payment pending.', 'woocommerce'));
-                        $order->add_order_note( __( 'SetGetGo payment pending. Payment still pending.' ) );
+                        $order->update_status('pending', __('PayByte Payment pending.', 'woocommerce'));
+                        $order->add_order_note( __( 'PayByte payment pending. Payment still pending.' ) );
                         break;           
                 }
             } 
@@ -408,7 +420,7 @@ function add_custom_order_totals_row( $total_rows, $order) {
     return $total_rows;
 }
 
-class setgetgo_handle_callback
+class paybyte_handle_callback
 {
     public function __construct()
     {

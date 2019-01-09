@@ -23,7 +23,7 @@ global $wpdb;
  * name of table to be dropped
  * prefixed with $wpdb->prefix from the database
  */
-$table_name = $wpdb->prefix . 'setgetgo_payment';
+$table_name = $wpdb->prefix . 'paybyte_payment';
 
 // drop the table from the database.
 $wpdb->query( "DROP TABLE IF EXISTS $table_name" );
