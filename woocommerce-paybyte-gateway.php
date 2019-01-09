@@ -55,12 +55,12 @@ class WC_Gateway_Custom extends WC_Payment_Gateway {
                 return; 
             }
             ?>
-            <h2><?php echo ('Crypto payment (' . $this->coin . ')') ?></h2>
+            <h2><?php echo 'Crypto payment (' . $this->coin . ')' ?></h2>
             <table class="woocommerce-table shop_table gift_info">
                 <tbody>
                     <tr>
                         <th>Crypto coin amount</th>
-                        <td><?php echo   $this->api_key . ' ' . $coinAmount ?></td>
+                        <td><?php echo $this->coin . ' ' . $coinAmount ?></td>
                     </tr> 
                     <tr>
                         <th>Message</th>
