@@ -1,4 +1,4 @@
-# PayByte for Woocommerce Plugin
+# PayByte for WooCommerce Plugin
 Accept Crypto payments in your WordPress WooCommerce website using PayByte
 
 ## Installation guide
