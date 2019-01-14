@@ -1,11 +1,11 @@
 <?php
 /*
 Plugin Name: PayByte for WooCommerce
-Plugin URI: https://paybyte.io
+Plugin URI: https://wordpress.org/plugins/paybyte-for-woocommerce
 Description: Enable your WooCommerce store to accept Crypto payments using PayByte Crypto payments processor.
 Version: 1.0.0
 Author: PayByte
-Author URI: https://paybyte.io
+Author URI: https://github.com/paybyte
 License: MIT
 */
 
