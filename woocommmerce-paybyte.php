@@ -1,10 +1,10 @@
 <?php
 /*
-Plugin Name: Woocommerce PayByte Payment Gateway
+Plugin Name: PayByte for WooCommerce
 Plugin URI: https://paybyte.io
-Description: Enable your WooCommerce store to accept Crypto payments with ease using PayByte Crypto payments processor.
+Description: Enable your WooCommerce store to accept Crypto payments using PayByte Crypto payments processor.
 Version: 1.0.0
-Author: PayByte Ltd.
+Author: PayByte
 Author URI: https://paybyte.io
 License: MIT
 */
@@ -18,13 +18,13 @@ function init_custom_gateway_class(){
 	if ( ! class_exists( 'WC_Payment_Gateway' ) ) return;
 	
 	// If we made it this far, then include our Gateway Class
-	include_once( 'woocommerce-setgetgo-gateway.php' );
+	include_once( 'woocommerce-paybyte-gateway.php' );
 
 	// Now that we have successfully included our class,
 	// Lets add it too WooCommerce
 	add_filter( 'woocommerce_payment_gateways', 'add_custom_gateway_class' );
 	function add_custom_gateway_class( $methods ) {
-	    $methods[] = 'WC_Gateway_Custom'; 
+	    $methods[] = 'WC_Gateway_Paybyte'; 
 	    return $methods;
 	}
 }

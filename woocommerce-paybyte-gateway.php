@@ -1,7 +1,7 @@
 <?php
 
 /* PaayByte Payment Gateway Class */
-class WC_Gateway_Custom extends WC_Payment_Gateway {
+class WC_Gateway_PayByte extends WC_Payment_Gateway {
 
     public $domain;
 
@@ -17,8 +17,8 @@ class WC_Gateway_Custom extends WC_Payment_Gateway {
         $this->id                 = 'custom';
         $this->icon               = apply_filters('woocommerce_custom_gateway_icon',  $plugin_dir.'/img/paybyte_logo_2.png');
         $this->has_fields         = false;
-        $this->method_title       = __( 'PayByte Payment', $this->domain );
-        $this->method_description = __( 'Allows payments with PayByte gateway.', $this->domain );
+        $this->method_title       = __( 'PayByte', $this->domain );
+        $this->method_description = __( 'Allows Crypto payments with PayByte.', $this->domain );
 
         // Load the settings.
         $this->init_form_fields();
@@ -80,13 +80,7 @@ class WC_Gateway_Custom extends WC_Payment_Gateway {
      */
     public function init_form_fields() {
 
-        $this->form_fields = array(
-            'enabled' => array(
-                'title'   => __( 'Enable/Disable', $this->domain ),
-                'type'    => 'checkbox',
-                'label'   => __( 'Enable PayByte Payment', $this->domain ),
-                'default' => 'no'
-            ),
+        $this->form_fields = array(          
             'title' => array(
                 'title'       => __( 'Title', $this->domain ),
                 'type'        => 'text',
@@ -106,12 +100,13 @@ class WC_Gateway_Custom extends WC_Payment_Gateway {
             'api_key' => array(
                 'title'       => __( 'Merchant API key', $this->domain ),
                 'type'        => 'text',
-                'description' => __( 'Merchant API key.', $this->domain ),
+                'label'       => __( 'Merchant API key.', $this->domain ),
                 'default'     => '',
-                'desc_tip'    => true,
+                'description' => __( 'You need a Merchant API key in order to use PayByte. To request an API Key just register as a merchant on https://paybyte.io'),
+                'desc_tip'    => false,
             ),
             'isTestnet' => array(
-                'title'     => __( 'PayByte Testnet' ),
+                'title'     => __( 'Testnet Mode' ),
                 'label'     => __( 'Enable Testnet payments' ),
                 'type'      => 'checkbox',
                 'description' => __( 'Place the payment gateway in test mode.'),
@@ -134,7 +129,7 @@ class WC_Gateway_Custom extends WC_Payment_Gateway {
                 'options'     => array(
                     'BTC'        => __( 'Bitcoin', 'woocommerce' ),
                     'BCH'       => __( 'Bitcoin Cash', 'woocommerce' ),
-                    'BGD'  => __( 'Bitcoin Gold', 'woocommerce' ),
+                    'BTG'  => __( 'Bitcoin Gold', 'woocommerce' ),
                     'BTX'  => __( 'BitCore', 'woocommerce' ),
                     'DGB' => __( 'DigiByte', 'woocommerce' ),
                     'DASH'  => __( 'Dash', 'woocommerce' ),                    
@@ -166,14 +161,16 @@ class WC_Gateway_Custom extends WC_Payment_Gateway {
             // Parse the json response into array
             $json_response = json_decode($response_body,true);
 
-            $btc_rate = $json_response['rate']['btc_rate'];
+            $ratename = strtolower($this->coin) . '_rate';
+
+            $coin_rate = $json_response['rate'][$ratename];
             $cart_total = WC()->cart->total;
-            $total_amt = $btc_rate * $cart_total;
+            $total_amt = $coin_rate * $cart_total;
             $total_amt = number_format($total_amt, 6, '.', '');
-            echo "<p> BTC exchange rate is <b>BTC ".$btc_rate."</b>";
-            echo "<input type='hidden' id='btc_amt' name='btc_amt' value='".$total_amt."' />";
-            return $total_amt;
-           
+            echo  "<p>Exchange rate (" . $currency . " -> " . $this->coin . "): <b>" . $this->coin . " " . $coin_rate . "</b>";
+            echo "<input type='hidden' id='coin_amt' name='coin_amt' value='" . $total_amt . "' />";
+            echo "<input type='hidden' id='coin_name' name='coin_name' value='" . $this->coin . "' />";
+            return $total_amt;           
         }
     }
 
@@ -193,9 +190,9 @@ class WC_Gateway_Custom extends WC_Payment_Gateway {
         $testnet = ($options['isTestnet']=="yes") ? "&testnet=true" : "";
 
         global $wp;
-        $callback_url = urlencode(home_url('/') . "wc-api/wc_gateway_custom/?order_id=" . $order_id . "&secret=" . $callaback_guid);
+        $callback_url = urlencode(home_url('/') . "wc-api/WC_Gateway_PayByte/?order_id=" . $order_id . "&secret=" . $callaback_guid);
         $return_url = urlencode( WC_Payment_Gateway::get_return_url( $customer_order ));        
-        $create_payment_url = "https://paybyte.io/api/create-payment?amount=".$amount."&api_key=".$api_key.$testnet."&callback=".$callback_url."&return_url=".$return_url;
+        $create_payment_url = "https://paybyte.io/api/create-payment?amount=".$amount."&api_key=".$api_key.$testnet."&callback=".$callback_url."&return_url=".$return_url."&coin=".$this->coin;
               
         error_log("preparing create payment url: ". $create_payment_url);
 
@@ -213,7 +210,7 @@ class WC_Gateway_Custom extends WC_Payment_Gateway {
     }
 
     /**
-     * Process the payment and return the result.
+     * Starts the payment flow and redirects to PayByte.
      *
      * @param int $order_id
      * @return array
@@ -268,7 +265,7 @@ class WC_Gateway_Custom extends WC_Payment_Gateway {
                             'user_id' => get_current_user_id(),
                             'order_id' => $order_id,
                             'payment_address' => $payment_address,
-							'payment_id' => $payment_id
+							'payment_id' => $payment_id,
                             'status' => $tran_status,
                             'amount' => $total_amt,
                             'amount_received' => $amount_received,
@@ -285,8 +282,11 @@ class WC_Gateway_Custom extends WC_Payment_Gateway {
                 /* Save payment url in meta field*/
                 update_post_meta( $order_id, 'payment_url', $received_payment_url ); 
 
-                /* Save BTC Total in meta field*/
-                update_post_meta( $order_id, 'btc_total', $total_amt);
+                /* Save coin total in meta field*/
+                update_post_meta( $order_id, 'coin_total', $total_amt);
+
+                /* Save coin total in meta field*/
+                update_post_meta( $order_id, 'coin_name', $this->coin);
                
                 $customer_order->update_status('pending', __( 'Awaiting PayByte payment', 'woocommerce' ));
 
@@ -314,11 +314,9 @@ class WC_Gateway_Custom extends WC_Payment_Gateway {
     // Check if we are forcing SSL on checkout pages
     // Custom function not required by the Gateway
     public function do_ssl_check() {
-        if( $this->enabled == "yes" ) {
-            if( get_option( 'woocommerce_force_ssl_checkout' ) == "no" ) {
-                echo "<div class=\"error\"><p>". sprintf( __( "<strong>%s</strong> is enabled and WooCommerce is not forcing the SSL certificate on your checkout page. Please ensure that you have a valid SSL certificate and that you are <a href=\"%s\">forcing the checkout pages to be secured.</a>" ), $this->method_title, admin_url( 'admin.php?page=wc-settings&tab=checkout' ) ) ."</p></div>";  
-            }
-        }       
+        if( get_option( 'woocommerce_force_ssl_checkout' ) == "no" ) {
+            echo "<div class=\"error\"><p>". sprintf( __( "<strong>%s</strong> is enabled but WooCommerce is not forcing the SSL certificate on your checkout page. Please ensure that you have a valid SSL certificate and that you are <a href=\"%s\">forcing the checkout pages to be secured.</a>" ), $this->method_title, admin_url( 'admin.php?page=wc-settings&tab=checkout' ) ) ."</p></div>";  
+        }
     }
 
 
@@ -363,20 +361,20 @@ class WC_Gateway_Custom extends WC_Payment_Gateway {
          
                 switch ($update_payment_status) {
                     case 'payment_received':
-                        $order->update_status('processing', __('PayByte payment received and transaction completed.', 'woocommerce'));
-                        $order->add_order_note( __( 'PayByte payment received and transaction complete.' ) );
+                        $order->update_status('completed', __('Payment received and transaction completed.', 'woocommerce'));
+                        $order->add_order_note( __( 'Payment received and transaction complete.' ) );
                         break;               
                     case 'payment_received_unconfirmed':
-                        $order->update_status('on-hold', __('PayByte payment on hold. Payment received but still unconfirmed.', 'woocommerce'));
-                        $order->add_order_note( __( 'PayByte payment on-hold. Funds received but still unconfirmed.' ) );
+                        $order->update_status('on-hold', __('Payment on hold. Payment received but still unconfirmed.', 'woocommerce'));
+                        $order->add_order_note( __( 'Payment on-hold. Funds received but still unconfirmed.' ) );
                         break;
                     case 'expired':
-                        $order->update_status('failed', __('PayByte payment failed. Payment request expired.', 'woocommerce'));
-                        $order->add_order_note( __( 'PayByte payment failed. Transaction request expired.' ) );
+                        $order->update_status('failed', __('Payment failed. Payment request expired.', 'woocommerce'));
+                        $order->add_order_note( __( 'Payment failed. Transaction request expired.' ) );
                         break; 
                     case 'pending':
-                        $order->update_status('pending', __('PayByte Payment pending.', 'woocommerce'));
-                        $order->add_order_note( __( 'PayByte payment pending. Payment still pending.' ) );
+                        $order->update_status('pending', __('Payment pending.', 'woocommerce'));
+                        $order->add_order_note( __( 'Payment pending.' ) );
                         break;           
                 }
             } 
@@ -384,7 +382,7 @@ class WC_Gateway_Custom extends WC_Payment_Gateway {
 
     }
 
-}// end of WC_Gateway_Custom class
+}// end of WC_Gateway_PayByte class
 
 /* 
 * Enqueue js and css
@@ -402,30 +400,23 @@ add_action( 'wp_enqueue_scripts', 'js_added_to_the_head' );
 
 
 /*
-* Add BTC total row on thankyou page
+* Add coin total row on thankyou page
 */
 add_filter( 'woocommerce_get_order_item_totals', 'add_custom_order_totals_row', 30, 3 );
 function add_custom_order_totals_row( $total_rows, $order) {
 
     $order_id = $order->get_order_number();
-    $get_btc_total= get_post_meta($order_id);
-    $btc_total = $get_btc_total['btc_total'][0];
+    $get_coin_total= get_post_meta($order_id);
+    $coin_total = $get_coin_total['coin_total'][0];
     
+    $txt =  $this->icon . ' total:';
+
     // Insert a new row
     $total_rows['recurr_not'] = array(
-        "label" => __( 'BTC Total: ', 'woocommerce' ),
-        "value" => $btc_total,
+        "label" => __( $txt, 'woocommerce' ),
+        "value" => $coin_total,
     );
 
     return $total_rows;
 }
-
-class paybyte_handle_callback
-{
-    public function __construct()
-    {
-    }
-}
-
-
 ?>
