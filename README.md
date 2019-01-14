@@ -13,3 +13,6 @@ Accept Crypto payments in your WordPress WooCommerce website using PayByte
 ## What do I need
 In order to use PayByte For WooCommerce, you will need to create a Merchant account on PayByte and get an API KEY.
 Just go to https://paybyte.io to register as a merchant and get your API KEY.
+
+## License
+PayByte is released under the MIT License. Please refer to the License file that accompanies this project for more information including complete terms and conditions.
