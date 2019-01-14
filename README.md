@@ -1,4 +1,4 @@
-# woocommerce-plugin
+# PayByte for Woocommerce Plugin
 Accept Crypto payments in your WordPress WooCommerce website using PayByte
 
 ## Installation guide
@@ -11,5 +11,5 @@ Accept Crypto payments in your WordPress WooCommerce website using PayByte
 - Configure PayByte plugin as required.
 
 ## What do I need
-In order to use Paybyte For WooCommerce, you will need to create a Merchant account on PayByte and get an API KEY.
+In order to use PayByte For WooCommerce, you will need to create a Merchant account on PayByte and get an API KEY.
 Just go to https://paybyte.io to register as a merchant and get your API KEY.
