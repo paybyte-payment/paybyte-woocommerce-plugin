@@ -16,7 +16,7 @@ jQuery(function(){
 
 
 function usingGateway(){
-    if(jQuery('form[name="checkout"] input[name="payment_method"]:checked').val() == 'custom'){
+    if(jQuery('form[name="checkout"] input[name="payment_method"]:checked').val() == 'paybyte'){
         var coin_amt = jQuery("#coin_amt").val();
         var coin = jQuery("#coin_name").val();
         jQuery('.woocommerce-checkout-review-order-table > tfoot:last').append('<tr id="coin_total"><th>' + coin + ' Total</th><td><b>'+coin_amt+'</b></td></tr>');

@@ -5,13 +5,27 @@ Plugin URI: https://wordpress.org/plugins/paybyte-for-woocommerce
 Description: Enable your WooCommerce store to accept Crypto payments using PayByte Crypto payments processor.
 Version: 1.0.0
 Author: PayByte
-Author URI: https://github.com/paybyte
-License: MIT
+Text Domain: PayByte.io
+Author URI:  https://github.com/paybyte-payment
+
+* WC requires at least: 2.4
+* WC tested up to: 3.5.2
+
+License:           Copyright 2019 PayByte, MIT License
+License URI:       https://github.com/paybyte-payment/paybyte-woocommerce-plugin/blob/master/LICENSE
+GitHub Plugin URI: https://github.com/paybyte-payment/paybyte-woocommerce-plugin
 */
 
+// Exit if accessed directly
+if (false === defined('ABSPATH'))
+{
+    exit;
+}
+
 // Include our Gateway Class and register Payment Gateway with WooCommerce
-add_action('plugins_loaded', 'init_custom_gateway_class');
-function init_custom_gateway_class(){
+add_action('plugins_loaded', 'paybyte_init_gateway_class');
+function paybyte_init_gateway_class(){
+
 	// If the parent WC_Payment_Gateway class doesn't exist
 	// it means WooCommerce is not installed on the site
 	// so do nothing
@@ -24,18 +38,17 @@ function init_custom_gateway_class(){
 	// Lets add it too WooCommerce
 	add_filter( 'woocommerce_payment_gateways', 'add_custom_gateway_class' );
 	function add_custom_gateway_class( $methods ) {
-	    $methods[] = 'WC_Gateway_Paybyte'; 
+	    $methods[] = 'WC_Gateway_PayByte'; 
 	    return $methods;
 	}
 }
-
  
- // function to create the Table 				
-function create_table_on_install() {
+// function to create the Table 				
+function paybyte_create_table_on_install() {
    	global $wpdb;
 	$charset_collate = $wpdb->get_charset_collate();
 
-	$sql = "CREATE TABLE `wp_paybyte_payment` (
+	$sql = "CREATE TABLE `paybyte_payment` (
 		  `id` mediumint(9) NOT NULL AUTO_INCREMENT,
 		  `user_id` int(10) NOT NULL,
 		  `order_id` int(10) NOT NULL,
@@ -54,18 +67,17 @@ function create_table_on_install() {
 	dbDelta( $sql );
 
 	// Set hold stock time to false.
-	update_option( 'woocommerce_hold_stock_minutes','');
- 
+	update_option( 'woocommerce_hold_stock_minutes',''); 
 }
 // run the install scripts upon plugin activation
-register_activation_hook(__FILE__,'create_table_on_install');
+register_activation_hook(__FILE__,'paybyte_create_table_on_install');
 
 
 // Add custom action links
 add_filter( 'plugin_action_links_' . plugin_basename( __FILE__ ), 'paybyte_action_links' );
 function paybyte_action_links( $links ) {
 	$plugin_links = array(
-		'<a href="' . admin_url( 'admin.php?page=wc-settings&tab=checkout' ) . '">' . __( 'Settings') . '</a>',
+		'<a href="' . admin_url( 'admin.php?page=wc-settings&tab=checkout' ) . '">Settings</a>',
 	);
 
 	// Merge our new link with the default ones

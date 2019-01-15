@@ -1,6 +1,6 @@
 <?php
 
-/* PaayByte Payment Gateway Class */
+/* PayByte Payment Gateway Class */
 class WC_Gateway_PayByte extends WC_Payment_Gateway {
 
     public $domain;
@@ -12,13 +12,14 @@ class WC_Gateway_PayByte extends WC_Payment_Gateway {
 
         $plugin_dir = plugin_dir_url(__FILE__);
 
-        $this->domain = 'custom_payment';
+        $this->domain = 'paybyte';
 
-        $this->id                 = 'custom';
+        $this->id                 = 'paybyte';
         $this->icon               = apply_filters('woocommerce_custom_gateway_icon',  $plugin_dir.'/img/paybyte_logo_2.png');
         $this->has_fields         = false;
+        $this->order_button_text  = __('Proceed to PayByte', $this->domain );
         $this->method_title       = __( 'PayByte', $this->domain );
-        $this->method_description = __( 'Allows Crypto payments with PayByte.', $this->domain );
+        $this->method_description = __( 'PayByte allows you to accept crypto payments on your WooCommerce Store.', $this->domain );
 
         // Load the settings.
         $this->init_form_fields();
@@ -40,16 +41,16 @@ class WC_Gateway_PayByte extends WC_Payment_Gateway {
         add_action( 'woocommerce_update_options_payment_gateways_' . $this->id, array( $this, 'process_admin_options' ) );
 
         // Lets check for SSL
-        add_action( 'admin_notices', array( $this,  'do_ssl_check' ) );
+        add_action( 'admin_notices', array( $this,  'paybyte_do_ssl_check' ) );
 
         add_action('woocommerce_api_' . strtolower(get_class($this)), array(
             &$this,
-            'handle_callback'
+            'paybyte_handle_callback'
         ));
 
         add_action('woocommerce_thankyou', function($order_id)
         {
-            $coinAmount = get_post_meta( $order_id, 'coin_total', true );
+            $coinAmount = get_post_meta( $order_id, 'paybyte_coin_total', true );
          
             if (strcmp($coinAmount, "true") == 0) {
                 return; 
@@ -70,11 +71,10 @@ class WC_Gateway_PayByte extends WC_Payment_Gateway {
             </table>
         <?php 
         });
-
-
     }
-  
 
+    public function __destruct(){}
+  
     /**
      * Build the administration fields for this specific Gateway
      */
@@ -106,10 +106,10 @@ class WC_Gateway_PayByte extends WC_Payment_Gateway {
                 'desc_tip'    => false,
             ),
             'isTestnet' => array(
-                'title'     => __( 'Testnet Mode' ),
-                'label'     => __( 'Enable Testnet payments' ),
+                'title'     => __( 'Testnet Mode', $this->domain  ),
+                'label'     => __( 'Enable Testnet payments', $this->domain  ),
                 'type'      => 'checkbox',
-                'description' => __( 'Place the payment gateway in test mode.'),
+                'description' => __( 'Place the payment gateway in test mode.', $this->domain ),
                 'default'   => 'no',
             ),
             'description' => array(
@@ -127,21 +127,21 @@ class WC_Gateway_PayByte extends WC_Payment_Gateway {
                 'default'     => 'BTC',
                 'desc_tip'    => true,
                 'options'     => array(
-                    'BTC'        => __( 'Bitcoin', 'woocommerce' ),
-                    'BCH'       => __( 'Bitcoin Cash', 'woocommerce' ),
-                    'BTG'  => __( 'Bitcoin Gold', 'woocommerce' ),
-                    'BTX'  => __( 'BitCore', 'woocommerce' ),
-                    'DGB' => __( 'DigiByte', 'woocommerce' ),
-                    'DASH'  => __( 'Dash', 'woocommerce' ),                    
-                    'GRS'  => __( 'Groestlcoin', 'woocommerce' ),
-                    'LTC'  => __( 'Litecoin', 'woocommerce' )
+                    'BTC'     => __( 'Bitcoin', 'woocommerce' ),
+                    'BCH'     => __( 'Bitcoin Cash', 'woocommerce' ),
+                    'BTG'     => __( 'Bitcoin Gold', 'woocommerce' ),
+                    'BTX'     => __( 'BitCore', 'woocommerce' ),
+                    'DGB'     => __( 'DigiByte', 'woocommerce' ),
+                    'DASH'    => __( 'Dash', 'woocommerce' ),                    
+                    'GRS'     => __( 'Groestlcoin', 'woocommerce'),
+                    'LTC'     => __( 'Litecoin', 'woocommerce' )
                 )
             ),
         );
     }
 
     
-    /* function to display text and BTC attributes on checkout page*/
+    /* function to display text and crypto attributes on checkout page*/
     public function payment_fields(){
         global $total_amt;
 
@@ -152,7 +152,7 @@ class WC_Gateway_PayByte extends WC_Payment_Gateway {
 
             $url = "https://paybyte.io/api/get-rate?currency=".$currency;
 
-           // Send this payload to PayByte for processing
+            // Send this payload to PayByte for processing
             $response = wp_remote_get( $url);
             
             // Retrieve the body's resopnse if no errors found
@@ -178,9 +178,12 @@ class WC_Gateway_PayByte extends WC_Payment_Gateway {
      * Prepares the create payment URL.
      *
      * @param WC_Order $customer_order
+     * @param int $order_id
+     * @param string $callaback_guid
+     * 
      * @return string
      */
-    public function prepare_create_payment_url($customer_order, $order_id, $callaback_guid) {
+    public function paybyte_prepare_create_payment_url($customer_order, $order_id, $callaback_guid) {
 
         error_log("preparing create payment url..");
         $api_key = $this->api_key;
@@ -203,10 +206,10 @@ class WC_Gateway_PayByte extends WC_Payment_Gateway {
      * Create a callback secret.
      *
      * @param WooCommerceOrder $customer_order
-     * @return
+     * @return UniqueIdentifier for this callback.
      */
-    public function create_callback_guid($customer_order) {
-            return uniqid("", true);
+    public function paybyte_create_callback_guid($customer_order) {
+        return uniqid("", true);
     }
 
     /**
@@ -223,9 +226,9 @@ class WC_Gateway_PayByte extends WC_Payment_Gateway {
         // who to charge and how much
         $customer_order = new WC_Order( $order_id );
 
-        $callback_guid =  $this->create_callback_guid($customer_order);
+        $callback_guid =  $this->paybyte_create_callback_guid($customer_order);
  
-        $create_payment_url = $this->prepare_create_payment_url($customer_order, $order_id, $callback_guid);
+        $create_payment_url = $this->paybyte_prepare_create_payment_url($customer_order, $order_id, $callback_guid);
        
         // Send this payload to PayByte for processing
         $response = wp_remote_get( $create_payment_url);
@@ -246,6 +249,7 @@ class WC_Gateway_PayByte extends WC_Payment_Gateway {
 		$payment_id = $json_response['transaction']['payment-id'];
         $tran_status = $json_response['transaction']['status'];
         $total_amt = $json_response['transaction']['amount'];
+        $coin = $json_response['transaction']['coin'];
         $amount_received = $json_response['transaction']['amount-received'];
         $received_payment_url = $json_response['transaction']['payment-url'];
         $response_error = $json_response['error'];
@@ -253,14 +257,14 @@ class WC_Gateway_PayByte extends WC_Payment_Gateway {
         if ($response_error != "ok") {
             wc_add_notice( $response_error, 'error' );
             //Add note to the order for your reference
-            $customer_order->add_order_note( 'Error: '. $response_error);
+            $customer_order->add_order_note( 'Error from PayByte: '. $response_error);
 
             $customer_order->update_status('failed', __( 'PayByte payment failed', 'woocommerce' ));
         }
         else {
 
             global $wpdb;
-            $insert = $wpdb->insert('wp_paybyte_payment',
+            $insert = $wpdb->insert('paybyte_payment',
                     array(
                             'user_id' => get_current_user_id(),
                             'order_id' => $order_id,
@@ -268,6 +272,7 @@ class WC_Gateway_PayByte extends WC_Payment_Gateway {
 							'payment_id' => $payment_id,
                             'status' => $tran_status,
                             'amount' => $total_amt,
+                            'coin' => $coin,
                             'amount_received' => $amount_received,
                             'callback_guid' => $callback_guid,
                             'created' => date('Y-m-d H:i:s')
@@ -280,15 +285,15 @@ class WC_Gateway_PayByte extends WC_Payment_Gateway {
                 $customer_order->add_order_note( __( 'PayByte payment initiated.' ) );
 
                 /* Save payment url in meta field*/
-                update_post_meta( $order_id, 'payment_url', $received_payment_url ); 
+                update_post_meta( $order_id, 'paybyte_payment_url', $received_payment_url ); 
 
                 /* Save coin total in meta field*/
-                update_post_meta( $order_id, 'coin_total', $total_amt);
+                update_post_meta( $order_id, 'paybyte_coin_total', $total_amt);
 
                 /* Save coin total in meta field*/
-                update_post_meta( $order_id, 'coin_name', $this->coin);
+                update_post_meta( $order_id, 'paybyte_coin_name', $this->coin);
                
-                $customer_order->update_status('pending', __( 'Awaiting PayByte payment', 'woocommerce' ));
+                $customer_order->update_status('pending', __( 'Awaiting PayByte payment', 'woocommerce'));
 
                 // Reduce stock levels
                 $customer_order->reduce_order_stock();
@@ -310,32 +315,36 @@ class WC_Gateway_PayByte extends WC_Payment_Gateway {
         }
     }
 
-
     // Check if we are forcing SSL on checkout pages
     // Custom function not required by the Gateway
-    public function do_ssl_check() {
+    public function paybyte_do_ssl_check() {
         if( get_option( 'woocommerce_force_ssl_checkout' ) == "no" ) {
-            echo "<div class=\"error\"><p>". sprintf( __( "<strong>%s</strong> is enabled but WooCommerce is not forcing the SSL certificate on your checkout page. Please ensure that you have a valid SSL certificate and that you are <a href=\"%s\">forcing the checkout pages to be secured.</a>" ), $this->method_title, admin_url( 'admin.php?page=wc-settings&tab=checkout' ) ) ."</p></div>";  
+            echo "<div class=\"error\"><p>". sprintf( __( "<strong>%s</strong> is enabled but WooCommerce is not forcing the SSL certificate on your checkout page. Please ensure that you have a valid SSL certificate and that you are <a href=\"%s\">forcing the checkout pages to be secured.</a>", $this->domain ), $this->method_title, admin_url( 'admin.php?page=wc-settings&tab=checkout' ) ) ."</p></div>";  
         }
     }
 
-
-    function handle_callback() {
+    /**
+     * Handles the callback from PayByte.
+     *
+     * @param int $order_id
+     * @return array
+     */
+    public function paybyte_handle_callback() {
 
         global $wpdb; 
 
-        $order_id = $_GET['order_id'];
-        $secret = $_GET['secret'];
-        $payment_id = $_GET['payment_id'];   
-        $isTestnet = $_GET['testnet'];
+        $order_id = sanitize_text_field($_GET['order_id']);
+        $secret = sanitize_text_field($_GET['secret']);
+        $payment_id = sanitize_text_field($_GET['payment_id']);   
+        $isTestnet = sanitize_text_field($_GET['testnet']);
         
-        error_log("callback received: " . $_GET['order_id'] . " , " . $_GET['payment_id'] . " , " .  $_GET['testnet']);
+        error_log("callback received: " . $order_id . " , " . $payment_id . " , " .  $isTestnet);
         
         // make sure this is a numberic value.
         if (is_numeric($order_id)) {    
           
             /* Check payment address exist in database */
-            $db_data = $wpdb->get_row('SELECT * FROM wp_paybyte_payment where order_id="'.$order_id.'"', OBJECT, 0);
+            $db_data = $wpdb->get_row('SELECT * FROM paybyte_payment where order_id="'.$order_id.'"', OBJECT, 0);
             $db_data = json_decode(json_encode($db_data), True);
             $db_payment_address = $db_data['payment_address']; 
             $db_payment_id = $db_data['payment_id']; 
@@ -357,7 +366,7 @@ class WC_Gateway_PayByte extends WC_Payment_Gateway {
                 $update_payment_status = $payment_json_response['transaction']['status'];
                 $amount_received = $payment_json_response['transaction']['amount-received'];
         
-                $db_update_status = $wpdb->update('wp_paybyte_payment', array('status' => $update_payment_status,'amount_received'=>$amount_received), array('payment_address' => $db_payment_address)); 
+                $db_update_status = $wpdb->update('paybyte_payment', array('status' => $update_payment_status,'amount_received'=>$amount_received), array('payment_address' => $db_payment_address)); 
          
                 switch ($update_payment_status) {
                     case 'payment_received':
@@ -379,15 +388,13 @@ class WC_Gateway_PayByte extends WC_Payment_Gateway {
                 }
             } 
         }
-
     }
-
 }// end of WC_Gateway_PayByte class
 
 /* 
 * Enqueue js and css
 */
- function js_added_to_the_head() {
+function paybyte_js_added_to_the_head() {
  
     wp_enqueue_script('jquery'); // Enqueue standard jquery file
     wp_register_script( 'add-bx-custom-js', plugins_url('js/custom.js', __FILE__), '', null,''  );
@@ -395,26 +402,24 @@ class WC_Gateway_PayByte extends WC_Payment_Gateway {
     wp_register_style('my_stylesheet', plugins_url('css/sgg_style.css', __FILE__));
     wp_enqueue_style('my_stylesheet'); 
 } 
-add_action( 'wp_enqueue_scripts', 'js_added_to_the_head' );
-/* Ends here */
-
+add_action( 'wp_enqueue_scripts', 'paybyte_js_added_to_the_head' );
 
 /*
 * Add coin total row on thankyou page
 */
-add_filter( 'woocommerce_get_order_item_totals', 'add_custom_order_totals_row', 30, 3 );
-function add_custom_order_totals_row( $total_rows, $order) {
+add_filter( 'woocommerce_get_order_item_totals', 'paybyte_add_custom_order_totals_row', 30, 3 );
+function paybyte_add_custom_order_totals_row( $total_rows, $order) {
 
     $order_id = $order->get_order_number();
-    $get_coin_total= get_post_meta($order_id);
-    $coin_total = $get_coin_total['coin_total'][0];
+    $coinAmount = get_post_meta( $order_id, 'paybyte_coin_total', true );
+    $coinName = get_post_meta( $order_id, 'paybyte_coin_name', true );
     
-    $txt =  $this->icon . ' total:';
+    $txt =  $coinName . ' Total:';
 
     // Insert a new row
     $total_rows['recurr_not'] = array(
-        "label" => __( $txt, 'woocommerce' ),
-        "value" => $coin_total,
+        "label" => $txt,
+        "value" => $coinAmount,
     );
 
     return $total_rows;
