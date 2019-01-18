@@ -3,10 +3,11 @@
 Plugin Name: PayByte for WooCommerce
 Plugin URI: https://wordpress.org/plugins/paybyte-for-woocommerce
 Description: Enable your WooCommerce store to accept Crypto payments using PayByte Crypto payments processor.
-Version: 1.0.0
+Version: 1.0.2
 Author: PayByte
 Text Domain: PayByte.io
-Author URI:  https://github.com/paybyte-payment
+Author URI: https://github.com/paybyte-payment
+Tested up to: 5.0.3
 
 * WC requires at least: 2.4
 * WC tested up to: 3.5.2
